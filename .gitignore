@@ -1,0 +1,31 @@
+.env
+.venv
+
+# Ambiente virtual
+.venv/
+
+embedding/cache_vetores_data.txt
+
+# Python
+__pycache__/
+*.pyc
+
+# VSCode
+.vscode/
+
+# Build
+build/
+dist/
+
+# Logs
+logs/
+
+# Cache
+*.pkl
+*.pickle
+
+# PyInstaller
+*.spec.bak
+
+# Windows
+Thumbs.db

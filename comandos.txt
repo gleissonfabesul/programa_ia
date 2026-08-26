@@ -1,0 +1,8 @@
+SigCorpWorker
+python -m PyInstaller --onefile --clean -n SigCorpInterpretador --collect-all fastapi --collect-all starlette --collect-all pydantic --collect-all pyodbc --collect-all tiktoken --hidden-import=fastapi --hidden-import=starlette --hidden-import=pydantic --hidden-import=pyodbc --hidden-import=tiktoken --hidden-import=tiktoken_ext --hidden-import=tiktoken_ext.openai_public main.py
+
+SigCorpIA
+python -m PyInstaller --onefile --windowed --icon=assets/icon.ico -n SigCorpIA launcher.py
+
+SigCorpAPI
+python -m PyInstaller --onefile --clean -n SigCorpAPI --collect-all fastapi --collect-all starlette --collect-all pydantic --collect-all pyodbc --collect-all tiktoken --hidden-import=fastapi --hidden-import=starlette --hidden-import=pydantic --hidden-import=pyodbc --hidden-import=tiktoken --hidden-import=tiktoken_ext --hidden-import=tiktoken_ext.openai_public --hidden-import=uvicorn api.py
