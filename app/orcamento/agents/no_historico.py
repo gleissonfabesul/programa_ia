@@ -126,6 +126,7 @@ async def match_history_node(state: AgentState):
                     "quantidade": item["quantity"], 
                     "source": "historico",
                     "status_estoque": "",
+                    "status": "normal",
                 })
                 continue
         

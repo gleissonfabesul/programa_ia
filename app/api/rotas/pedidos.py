@@ -14,6 +14,7 @@ class PedidoRequest(BaseModel):
     customer_id: int
     raw_request: str
     cemp: str
+    outros: bool = False
 
 @router.post("/processar-orcamento")
 async def processar_orcamento(payload: PedidoRequest):
@@ -21,6 +22,7 @@ async def processar_orcamento(payload: PedidoRequest):
         input_data = {
             "cemp": payload.cemp,
             "customer_id": payload.customer_id,
+            "outros": payload.outros,
             "raw_request": payload.raw_request
         }
         logger.info(f"=============================== [Iniciando novo Processo] ===============================")

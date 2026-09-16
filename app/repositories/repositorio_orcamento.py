@@ -44,11 +44,11 @@ class RepositorioProcessarOrcamentos:
         query = text("""
             INSERT INTO FABESUL_ERP_WEB.dbo.TEMP_REL_ORCAMENTO (
                 CD_PRODUTO, DS_DESCRICAO, DS_MARCA, VL_PRODUTO, VL_TOTAL, VL_QTDE, 
-                TX_UNIDADE, CD_ORCAMENTO, CD_CLIENTE, CD_NLAI,CD_GUID, TX_NOME
+                TX_UNIDADE, CD_ORCAMENTO, CD_CLIENTE, CD_NLAI,CD_GUID, TX_NOME, TX_FONE
             )
             VALUES (
                 :CD_PRODUTO, :DS_DESCRICAO, :DS_MARCA, :VL_PRODUTO, :VL_TOTAL, :VL_QTDE,
-                :TX_UNIDADE, :CD_ORCAMENTO, :CD_CLIENTE, :CD_NLAI, :CD_GUID, :TX_NOME
+                :TX_UNIDADE, :CD_ORCAMENTO, :CD_CLIENTE, :CD_NLAI, :CD_GUID, :TX_NOME, :TX_FONE
             )
             """)
 
@@ -66,7 +66,8 @@ class RepositorioProcessarOrcamentos:
                 "CD_CLIENTE": produto["CD_CLIENTE"],
                 "CD_NLAI": produto["CD_NLAI"],
                 "CD_GUID": codChave,
-                "TX_NOME": produto["TX_NOME"]
+                "TX_NOME": produto["TX_NOME"],
+                "TX_FONE": produto["TX_FONE"]
             })
 
             db.commit()

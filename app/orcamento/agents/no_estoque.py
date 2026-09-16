@@ -104,7 +104,8 @@ async def inventory_node(state: AgentState):
                         "descr": substituto["descr"],
                         "quantidade": item["quantidade"],
                         "source": f"Substituição (original: {item['id']})", 
-                        "status_estoque": "SUBSTITUÍDO"
+                        "status_estoque": "SUBSTITUÍDO",
+                        "status": item.get("status", "normal")
                     })
             else:
                 item["status_estoque"] = "SEM ESTOQUE / SEM SIMILAR"

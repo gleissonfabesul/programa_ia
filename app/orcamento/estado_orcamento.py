@@ -3,11 +3,13 @@ from typing import List, TypedDict, Optional
 class PendingItem(TypedDict):
     name: str
     quantity: str
+    card: str
 
 class AgentState(TypedDict):
     customer_id: int
     cemp: str
     raw_request: str
+    outros: bool
     pending_items: List[PendingItem]
     history_pool: List[dict]
     contract_pool: List[dict]

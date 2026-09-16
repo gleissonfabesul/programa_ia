@@ -61,7 +61,7 @@ class RepositorioProdutos:
 
     async def buscar_produtos_contrato(self, cliente_id: int, cemp: str):
         query = text("""
-        Select Top 300
+        Select Top 450
             C.cpro,
             C.card, 
             C.prect,
@@ -287,3 +287,36 @@ class RepositorioProdutos:
                     break
 
             return []
+
+    async def buscar_preco_medio(self, cpro: int, cemp: str):
+        query = text("""
+            SELECT 
+                CAST(AVG(X.prec) AS DECIMAL(18,2)) AS PreCli
+            FROM
+            (
+                SELECT TOP 400
+                    I.prec
+                FROM Fabesul.dbo.NFItem I WITH (NOLOCK)
+                INNER JOIN Fabesul.dbo.NFiscal N WITH (NOLOCK)
+                    ON N.cemp = I.cemp
+                AND N.seri = I.seri
+                AND N.nume = I.nume
+                WHERE I.cemp = :cemp
+                AND I.cpro = :cpro
+                AND I.prec > 0
+                AND N.situ = 'I'
+                ORDER BY N.dtnf DESC
+            ) X
+            OPTION (RECOMPILE);
+            """)
+
+        with SessaoLocal() as db:
+            resultado = db.execute(
+                query,
+                {"cpro": cpro, "cemp": cemp}
+            ).fetchone()
+
+            if resultado and resultado.PreCli is not None:
+                return resultado.PreCli
+
+            return None

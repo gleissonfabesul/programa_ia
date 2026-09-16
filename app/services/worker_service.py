@@ -42,7 +42,7 @@ async def executar_worker():
             try:
                 resultado = await processar_orcamento(habil_atividade)
 
-                itens_processados = await processar_itens_orcamento(habil_atividade["CD_CHAVE"], resultado, dados_texto.get("ccli"), dados_texto.get("cemp"))
+                itens_processados = await processar_itens_orcamento(habil_atividade["CD_CHAVE"], resultado, dados_texto.get("ccli"), dados_texto.get("cemp"),  dados_texto.get("PrecoMedio"))
 
                 if(itens_processados):
                     await repositorio.alterar_situacao_orcamento(habil_atividade["CD_INDEX"], 172)
@@ -142,10 +142,12 @@ async def processar_orcamento(habil_atividade):
 
     cemp = dados_texto.get("cemp")
     ccli = dados_texto.get("ccli")
+    outros = dados_texto.get("outros") is True
 
     input_data = {
         "cemp": "0" + str(cemp),
         "customer_id": ccli,
+        "outros": outros,
         "raw_request": f"""
                 === TEXTO DIGITADO ===
                 {texto_extraido}
@@ -172,7 +174,7 @@ async def processar_orcamento(habil_atividade):
 
     return dados_finais
 
-async def processar_itens_orcamento(codGUID: str, itens: list, ccli: int, cemp: str):
+async def processar_itens_orcamento(codGUID: str, itens: list, ccli: int, cemp: str, precMedio: bool):
     repositorio = RepositorioProcessarOrcamentos()
     repositorio_produto = RepositorioProdutos()
     repositorio_cliente = RepositorioCliente()
@@ -213,8 +215,14 @@ async def processar_itens_orcamento(codGUID: str, itens: list, ccli: int, cemp: 
             itens_agrupados.append(item.copy())
 
     cont = 0
+    nlai_principal = None
+    print("========== ITENS AGRUPADOS ==========")
+    for item in itens_agrupados:
+        print(item)
+    print("=====================================")
     for item in itens_agrupados:
         id_produto = str(item.get("id", "")).strip().upper()
+        eh_alternativo = item.get("status") == "alternativo"
 
         preco = 0
         valorTotal = 0
@@ -229,29 +237,49 @@ async def processar_itens_orcamento(codGUID: str, itens: list, ccli: int, cemp: 
             else:
                 preco = Decimal("0.00")
         else:
-            resultado_preco = await repositorio_produto.buscar_preco_produto(cemp, cliente.ccli, cliente.cate, cliente.contri, item.get("id"))
+            if(precMedio):
+                logger.info(f"🔍 [BUSCANDO PREÇO MÉDIO] Produto: {item.get('id')}")
 
-            if resultado_preco:
-                preco = Decimal(str(resultado_preco[0].get("PreCli", 0)))
-                quantidade = Decimal(str(item.get("quantidade", 0)))
-                valorTotal = preco * quantidade
+                resultado_preco = await repositorio_produto.buscar_preco_medio(item.get("id"), "01")
+                if resultado_preco:
+                    preco = Decimal(resultado_preco)
+                    print(preco)
+                    quantidade = Decimal(str(item.get("quantidade", 0)))
+                    valorTotal = preco * quantidade
+                else:
+                    preco = Decimal("0.00")
+                    valorTotal = Decimal("0.00")
             else:
-                preco = Decimal("0.00")
-                valorTotal = Decimal("0.00")
+                resultado_preco = await repositorio_produto.buscar_preco_produto(cemp, cliente.ccli, cliente.cate, cliente.contri, item.get("id"))
+                if resultado_preco:
+                    preco = Decimal(str(resultado_preco[0].get("PreCli", 0)))
+                    quantidade = Decimal(str(item.get("quantidade", 0)))
+                    valorTotal = preco * quantidade
+                else:
+                    preco = Decimal("0.00")
+                    valorTotal = Decimal("0.00")
 
-        cont += 1
+        if not eh_alternativo:
+            cont += 1
+            nlai_principal = cont
+
         produto = {
             "CD_PRODUTO": 0 if item.get("id") == "N/A" else item.get("id"),
             "DS_DESCRICAO": item.get("descr") or "",
-            "DS_MARCA": item.get("source") or "",
+            "DS_MARCA": (
+                "alternativo"
+                if item.get("status") == "alternativo"
+                else item.get("source") or ""
+            ),
             "VL_PRODUTO": preco,
             "VL_TOTAL": 0 if valorTotal == 0 else valorTotal,
             "VL_QTDE": float(item.get("quantidade", 0)),
             "TX_UNIDADE": "",
             "CD_ORCAMENTO": 0,
             "CD_CLIENTE": ccli,
-            "CD_NLAI": cont,
-            "TX_NOME": item.get("status_estoque")
+            "CD_NLAI": 0 if eh_alternativo else nlai_principal,
+            "TX_NOME": item.get("status_estoque"),
+            "TX_FONE": cont,
         }
 
         await repositorio.adicionar_produtos_relacionados( produto, codGUID )

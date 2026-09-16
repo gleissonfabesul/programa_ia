@@ -105,7 +105,7 @@ async def carregar_ou_criar_cache_vetorial(forcar_atualizacao: bool = False) -> 
     return catalogo_vetorial
 
 # --- FUNÇÃO AUXILIAR ASSÍNCRONA PARA PROCESSAR UM ÚNICO ITEM ---
-async def processar_produto_paralelo(item, catalogo_empresa, empresa_atual):
+async def processar_produto_paralelo(item, catalogo_empresa, empresa_atual, permitir_outros=False):
     """Executa a busca vetorial por matriz e a decisão da LLM concorrentemente por item."""
     nome_solicitado = item["name"]
     
@@ -126,7 +126,7 @@ async def processar_produto_paralelo(item, catalogo_empresa, empresa_atual):
             similaridades[idx] += np.log1p(qtd) * 0.02
             
     # Filtra e captura os 15 melhores índices
-    indices_top = np.argsort(similaridades)[-100:][::-1]
+    indices_top = np.argsort(similaridades)[-15:][::-1]
 
     melhor_embedding = float(similaridades_embedding.max())
 
@@ -165,6 +165,7 @@ async def processar_produto_paralelo(item, catalogo_empresa, empresa_atual):
             "quantidade": item["quantity"], 
             "source": "catalogo", 
             "status_estoque": "",
+            "status": "normal",
         }
 
     pool_formatado = json.dumps(pool_reduzido, ensure_ascii=False, default=str)
@@ -529,17 +530,39 @@ Não escreva texto adicional.
     
     if response.matches and response.matches[0].found:
         m = response.matches[0]
-        item_db = next(x for x in pool_reduzido if str(x['cpro']) == str(m.matched_id))
-        return {
+        produto_principal = {
             "id": int(m.matched_id), 
             "descr": m.matched_name, 
             "quantidade": item["quantity"], 
-            # "preco": item_db["preco"], 
             "source": "catalogo",
             "status_estoque": "",
-            # "disp": item_db["disp"],
-            # "cemp": empresa_atual
+            "status": "normal",
         }
+
+        if not permitir_outros:
+            return produto_principal
+
+        ids_alternativos = set()
+        produtos_alternativos = []
+        for candidato in pool_reduzido:
+            id_candidato = str(candidato["cpro"])
+            if id_candidato == str(m.matched_id) or id_candidato in ids_alternativos:
+                continue
+
+            ids_alternativos.add(id_candidato)
+            produtos_alternativos.append({
+                "id": int(candidato["cpro"]),
+                "descr": candidato["descr"],
+                "quantidade": item["quantity"],
+                "source": "catalogo",
+                "status_estoque": "",
+                "status": "alternativo",
+            })
+
+            if len(produtos_alternativos) == 3:
+                break
+
+        return [produto_principal] + produtos_alternativos
     else:
         return {
             "id": "N/A", 
@@ -548,6 +571,7 @@ Não escreva texto adicional.
             # "preco": 0.0, 
             "source": "catalogo", 
             "status_estoque": "",
+            "status": "normal",
             "score_embedding": round(score_embedding,4)
             # "disp": 0,
             # "cemp": empresa_atual
@@ -588,8 +612,15 @@ async def match_catalog_node(state: AgentState):
 
     logger.info(f"└───> ✨ [CATÁLOGO] Analisando produtos...")
 
+    permitir_outros = state.get("outros", False) is True and not state.get("contract_pool", [])
+
     tarefas = [
-        processar_produto_paralelo(item, catalogo_empresa, empresa_atual)
+        processar_produto_paralelo(
+            item,
+            catalogo_empresa,
+            empresa_atual,
+            permitir_outros=permitir_outros,
+        )
         for item in state["pending_items"]
     ]
     
@@ -598,4 +629,11 @@ async def match_catalog_node(state: AgentState):
     
     logger.info("└───> ✨ [CATÁLOGO] Busca semântica e viés comercial concluídos.")
 
-    return {"pending_items": [], "final_results": state["final_results"] + list(found_in_catalog)}
+    resultados_catalogo = []
+    for resultado in found_in_catalog:
+        if isinstance(resultado, list):
+            resultados_catalogo.extend(resultado)
+        else:
+            resultados_catalogo.append(resultado)
+
+    return {"pending_items": [], "final_results": state["final_results"] + resultados_catalogo}

@@ -52,6 +52,7 @@ async def match_contract_node(state: AgentState):
                     "quantidade": item["quantity"], 
                     "source": "contrato",
                     "status_estoque": "",
+                    "status": "normal",
                 })
                 continue  # Item resolvido pelo contrato, vai para o próximo
         
@@ -62,6 +63,7 @@ async def match_contract_node(state: AgentState):
             "quantidade": item["quantity"],
             "source": "contrato",
             "status_estoque": "",
+            "status": "normal",
         })
     
     logger.info("🔌 [ESTEIRA: CONTRATO] Validação de tabelas de contrato finalizada.")
