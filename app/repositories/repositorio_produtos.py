@@ -5,6 +5,20 @@ from app.database.session import (
 )
 
 class RepositorioProdutos:
+    async def buscar_produto_por_codigo(self, cpro: int):
+        query = text("""
+            SELECT TOP 1
+                P.cpro,
+                P.descr,
+                P.precal
+            FROM Fabesul.dbo.Produt P
+            WHERE P.cpro = :cpro
+        """)
+
+        with SessaoLocal() as db:
+            resultado = db.execute(query, {"cpro": cpro}).mappings().first()
+            return dict(resultado) if resultado else None
+
     async def buscar_catalogo_produtos(self):
 
         query = text("""
